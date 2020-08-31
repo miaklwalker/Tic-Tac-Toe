@@ -9,40 +9,37 @@ const port = 4000
 let availableGames = new Map();
 let activeGames = new Map();
 
+const Routes = {
+    startGame(){
+        let gameID = Random.randomStringAlphaNumeric(23);
+        let playerID = Random.randomStringAlphaNumeric(23);
+        let game = new Game(playerID);
+        availableGames.set(gameID,game);
+        return {gameID,playerID} ;
 
+    },
+    findGame(){
+        let playerID = Random.randomStringAlphaNumeric(23);
+        let games = availableGames.keys();
+        let gameID = games.next().value;
+        let game = availableGames.get(gameID);
+        game.addPlayer(playerID);
+        activeGames.set(gameID,game);
+        availableGames.delete(gameID);
+        return {gameID,playerID};
 
-
-
-function startGame(){
-    let gameID = Random.randomStringAlphaNumeric(23);
-    let playerID = Random.randomStringAlphaNumeric(23);
-    let game = new Game(playerID);
-    availableGames.set(gameID,game);
-    let config = {gameID,playerID};
-    return config ;
-
+    },
+    getBoard(gameID){
+        return activeGames.get(gameID);
+    },
+    updateGame(gID,pID,move){
+        let game = getBoard(gID)
+        game.addMove(pID,move);
+        return game;
+    }
 }
-function findGame(){
-    let playerID = Random.randomStringAlphaNumeric(23);
-    let games = availableGames.keys();
-    let gameID = games.next().value;
-    let game = availableGames.get(gameID);
-    game.addPlayer(playerID);
-    activeGames.set(gameID,game);
-    availableGames.delete(gameID);
-    let config = {gameID,playerID};
-    return config ;
-    
-}
-function getBoard(gameID){
-    let game = activeGames.get(gameID);
-    return game;
-}
-function updateGame(gID,pID,move){
-    let game = getBoard(gID)
-    game.addMove(pID,move);
-    return game;
-}
+
+const {startGame,findGame,getBoard,updateGame} = Routes;
 
 async function Router (ctx,next){
     await next();
