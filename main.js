@@ -1,6 +1,7 @@
+import Board from "./modules/board.js";
 const serverURL = "https://wide-experts-serve.loca.lt"
 
-let scoreboard;
+let scoreboard,boardHTML;
 async function messageServer(method,headers={}){
    let rHeaders = new Headers({...headers,...{"Bypass-Tunnel-Reminder":"any"}});
    let request = new Request(serverURL);
@@ -15,8 +16,7 @@ async function messageServer(method,headers={}){
    let {value} = await body.getReader().read();
     let res = ""
     value.forEach(byte=>res+=String.fromCharCode(byte))
-    let isJSON = JSON.parse(res)
-    console.log(res)
+    let isJSON = JSON.parse(res);
     return isJSON ? isJSON : res;
 }
 async function startGame(){
@@ -39,7 +39,7 @@ async function refreshGame(){
     let ID = sessionStorage.getItem("gameID");
     const board = await messageServer("PATCH",{ID})
     let game = await board;
-    draw(game.state["board"]);
+    boardHTML.update(game.state["board"]);
     return board;
 }
 async function makeMove(e){
@@ -73,43 +73,23 @@ function checkWinner(game){
     }
     return{combo:null,win:false}
 }
-function draw (game) {
-    game.forEach((value,index)=>{
-        let ele = document.getElementById(`${index}`);
-        if(value){
-            ele.innerText = value;
-        }else{
-            ele.innerText = "";
-        }
-    })
-}
 function addGameToHTML(){
     document.querySelector(".container").innerHTML = `
         <div class="scoreboard"></div>
-        <div class="board">
-            <div id="0" class="cell">1</div>
-            <div id="1" class="cell">2</div>
-            <div id="2" class="cell">3</div>
-            <div id="3" class="cell">4</div>
-            <div id="4" class="cell">5</div>
-            <div id="5" class="cell">6</div>
-            <div id="6" class="cell">7</div>
-            <div id="7" class="cell">8</div>
-            <div id="8" class="cell">9</div>
-        </div>
+        <tic-tac-board/>
     `;
-    [...document.querySelectorAll(".cell")].forEach(el=>el.addEventListener("click",makeMove))
+    boardHTML = document.querySelector("tic-tac-board");
+    boardHTML.attachListener(makeMove);
     scoreboard = document.querySelector(".scoreboard");
     setInterval(async ()=>{
         try{
             let game = await refreshGame();
-            let board = game.state['board']
-            draw(board);
-            let {win,combo} = checkWinner(board);
+            let boardState = game.state['board']
+            boardHTML.update(boardState);
+            let {win,combo} = checkWinner(boardState);
             if(win){
                 combo.forEach(cell=>{
-                    let element = document.getElementById(`${cell}`)
-                    element.classList.add("win");
+                    boardHTML.getCell(cell).classList.add("win")
                 });
             }
         }catch (err){
@@ -120,7 +100,6 @@ function addGameToHTML(){
 
     },100)
 }
-
 function init(){
     if(document.querySelector("button")){
         let start = document.querySelector("[data-command=START]");
@@ -133,3 +112,5 @@ init();
 
 
 
+//todo show a loading screen while waiting for opponent
+//todo
