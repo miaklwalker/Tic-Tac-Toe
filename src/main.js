@@ -1,8 +1,8 @@
-const serverURL = "http://localhost:4000"
+const serverURL = "https://wide-experts-serve.loca.lt"
 
 let scoreboard;
 async function messageServer(method,headers={}){
-   let rHeaders = new Headers(headers);
+   let rHeaders = new Headers({...headers,...{"Bypass-Tunnel-Reminder":"any"}});
    let request = new Request(serverURL);
    const init = {
        method:method,
@@ -11,7 +11,13 @@ async function messageServer(method,headers={}){
        mode:"cors"
    }
    let response = await fetch(request,init);
-   return response.json();
+   let body= await response.body;
+   let {value} = await body.getReader().read();
+    let res = ""
+    value.forEach(byte=>res+=String.fromCharCode(byte))
+    let isJSON = JSON.parse(res)
+    console.log(res)
+    return isJSON ? isJSON : res;
 }
 async function startGame(){
     sessionStorage.clear();
@@ -33,7 +39,7 @@ async function refreshGame(){
     let ID = sessionStorage.getItem("gameID");
     const board = await messageServer("PATCH",{ID})
     let game = await board;
-    draw(game.gameState);
+    draw(game.state["board"]);
     return board;
 }
 async function makeMove(e){
@@ -43,8 +49,6 @@ async function makeMove(e){
   let response =  await messageServer("PUT",{ID,game,index})
   console.log(response)
 }
-
-
 function checkWinner(game){
     let toCheck = [
         [0,1,2],
@@ -68,14 +72,6 @@ function checkWinner(game){
         }
     }
     return{combo:null,win:false}
-}
-
-async function clickCell (event){
-    let cell = +event.target.id;
-    let game = await refreshGame();
-
-
-
 }
 function draw (game) {
     game.forEach((value,index)=>{
@@ -102,22 +98,26 @@ function addGameToHTML(){
             <div id="8" class="cell">9</div>
         </div>
     `;
-    let cells = document.querySelectorAll(".cell");
-    for (let index = 0; index < cells.length; index++) {
-        const element = cells[index];
-        element.addEventListener("click",makeMove)
-    }
+    [...document.querySelectorAll(".cell")].forEach(el=>el.addEventListener("click",makeMove))
     scoreboard = document.querySelector(".scoreboard");
     setInterval(async ()=>{
-       let game = await refreshGame();
-       draw(game.gameState);
-       let {win,combo} = checkWinner(game.gameState);
-        if(win){
-            combo.forEach(cell=>{
-                let element = document.getElementById(`${cell}`)
-                element.classList.add("win");
-            });
+        try{
+            let game = await refreshGame();
+            let board = game.state['board']
+            draw(board);
+            let {win,combo} = checkWinner(board);
+            if(win){
+                combo.forEach(cell=>{
+                    let element = document.getElementById(`${cell}`)
+                    element.classList.add("win");
+                });
+            }
+        }catch (err){
+            console.warn(err)
         }
+
+
+
     },100)
 }
 
